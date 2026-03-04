@@ -24,7 +24,7 @@ DTYPE = torch.bfloat16
 
 print(f"Loading model from {MODEL_PATH} on {DEVICE}...")
 model = Qwen3TTSModel.from_pretrained(
-    MODEL_PATH, device_map=DEVICE, dtype=DTYPE, attn_implementation="flash_attention_2"
+    MODEL_PATH, device_map=DEVICE, torch_dtype=DTYPE, attn_implementation="flash_attention_2"
 )
 print("Model ready.")
 
