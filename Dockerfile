@@ -7,6 +7,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends libsndfile1 sox && \
     rm -rf /var/lib/apt/lists/*
 
+# flash-attn must be built with access to the base image's torch
+RUN pip install --no-cache-dir --no-build-isolation flash-attn
+
 # Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
