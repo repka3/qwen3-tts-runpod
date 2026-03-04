@@ -46,10 +46,16 @@ def handler(job):
     if not text:
         return {"error": "text is required"}
 
+    # Decode base64 audio to numpy array (the library's base64 detection
+    # fails on standard base64 containing '/' characters)
+    raw_bytes = base64.b64decode(ref_audio)
+    audio_np, audio_sr = sf.read(io.BytesIO(raw_bytes), dtype="float32")
+    ref_audio_tuple = (audio_np, audio_sr)
+
     wavs, sr = model.generate_voice_clone(
         text=text,
         language=language,
-        ref_audio=ref_audio,
+        ref_audio=ref_audio_tuple,
         ref_text=ref_text,
     )
 
