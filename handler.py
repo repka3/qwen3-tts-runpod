@@ -23,7 +23,9 @@ DEVICE = "cuda:0"
 DTYPE = torch.bfloat16
 
 print(f"Loading model from {MODEL_PATH} on {DEVICE}...")
-model = Qwen3TTSModel.from_pretrained(MODEL_PATH, device_map=DEVICE, dtype=DTYPE)
+model = Qwen3TTSModel.from_pretrained(
+    MODEL_PATH, device_map=DEVICE, dtype=DTYPE, attn_implementation="flash_attention_2"
+)
 print("Model ready.")
 
 
@@ -57,6 +59,16 @@ def handler(job):
         language=language,
         ref_audio=ref_audio_tuple,
         ref_text=ref_text,
+        max_new_tokens=2048,
+        do_sample=True,
+        top_k=50,
+        top_p=1.0,
+        temperature=0.9,
+        repetition_penalty=1.05,
+        subtalker_dosample=True,
+        subtalker_top_k=50,
+        subtalker_top_p=1.0,
+        subtalker_temperature=0.9,
     )
 
     return {
