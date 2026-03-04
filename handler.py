@@ -56,21 +56,30 @@ def handler(job):
     if not text:
         return {"error": "text is required"}
 
-    # --- Decode reference audio ---
     t0 = time.time()
+
+    # --- Decode reference audio ---
+    t_dec_start = time.time()
     raw_bytes = base64.b64decode(ref_audio)
     audio_np, audio_sr = sf.read(io.BytesIO(raw_bytes), dtype="float32")
     ref_audio_tuple = (audio_np, audio_sr)
-    t_decode = time.time() - t0
-    print(f"[timing] Audio decode: {t_decode:.3f}s")
+    print(f"[timing] Audio decode: {time.time() - t_dec_start:.3f}s")
 
-    # --- Generate cloned speech ---
-    t1 = time.time()
+    # --- Clone voice (encode ref audio into reusable prompt) ---
+    t_clone_start = time.time()
+    voice_clone_prompt = model.create_voice_clone_prompt(
+        ref_audio=ref_audio_tuple,
+        ref_text=ref_text,
+    )
+    torch.cuda.synchronize()
+    print(f"[timing] Voice clone (prompt creation): {time.time() - t_clone_start:.3f}s")
+
+    # --- Generate speech from cloned voice ---
+    t_gen_start = time.time()
     wavs, sr = model.generate_voice_clone(
         text=text,
         language=language,
-        ref_audio=ref_audio_tuple,
-        ref_text=ref_text,
+        voice_clone_prompt=voice_clone_prompt,
         max_new_tokens=max_new_tokens,
         do_sample=True,
         top_k=top_k,
@@ -82,7 +91,8 @@ def handler(job):
         subtalker_top_p=top_p,
         subtalker_temperature=temperature,
     )
-    t_generate = time.time() - t1
+    torch.cuda.synchronize()
+    t_generate = time.time() - t_gen_start
     audio_duration = len(wavs[0]) / sr
     print(f"[timing] Generation: {t_generate:.3f}s | Audio duration: {audio_duration:.2f}s | RTF: {t_generate / audio_duration:.2f}x")
 
