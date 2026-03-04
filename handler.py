@@ -7,6 +7,7 @@ Returns base64-encoded WAV audio.
 
 import io
 import base64
+import time
 
 import numpy as np
 import soundfile as sf
@@ -43,33 +44,49 @@ def handler(job):
     text = inp.get("text")
     language = inp.get("language", "English")
 
+    # Generation parameters (all optional, sensible defaults)
+    max_new_tokens = inp.get("max_new_tokens", 2048)
+    temperature = inp.get("temperature", 0.9)
+    top_k = inp.get("top_k", 50)
+    top_p = inp.get("top_p", 1.0)
+    repetition_penalty = inp.get("repetition_penalty", 1.05)
+
     if not ref_audio or not ref_text:
         return {"error": "ref_audio (base64) and ref_text are required"}
     if not text:
         return {"error": "text is required"}
 
-    # Decode base64 audio to numpy array (the library's base64 detection
-    # fails on standard base64 containing '/' characters)
+    # --- Decode reference audio ---
+    t0 = time.time()
     raw_bytes = base64.b64decode(ref_audio)
     audio_np, audio_sr = sf.read(io.BytesIO(raw_bytes), dtype="float32")
     ref_audio_tuple = (audio_np, audio_sr)
+    t_decode = time.time() - t0
+    print(f"[timing] Audio decode: {t_decode:.3f}s")
 
+    # --- Generate cloned speech ---
+    t1 = time.time()
     wavs, sr = model.generate_voice_clone(
         text=text,
         language=language,
         ref_audio=ref_audio_tuple,
         ref_text=ref_text,
-        max_new_tokens=2048,
+        max_new_tokens=max_new_tokens,
         do_sample=True,
-        top_k=50,
-        top_p=1.0,
-        temperature=0.9,
-        repetition_penalty=1.05,
+        top_k=top_k,
+        top_p=top_p,
+        temperature=temperature,
+        repetition_penalty=repetition_penalty,
         subtalker_dosample=True,
-        subtalker_top_k=50,
-        subtalker_top_p=1.0,
-        subtalker_temperature=0.9,
+        subtalker_top_k=top_k,
+        subtalker_top_p=top_p,
+        subtalker_temperature=temperature,
     )
+    t_generate = time.time() - t1
+    audio_duration = len(wavs[0]) / sr
+    print(f"[timing] Generation: {t_generate:.3f}s | Audio duration: {audio_duration:.2f}s | RTF: {t_generate / audio_duration:.2f}x")
+
+    print(f"[timing] Total: {time.time() - t0:.3f}s")
 
     return {
         "audio_base64": wav_to_base64(wavs[0], sr),
