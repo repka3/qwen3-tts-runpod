@@ -35,7 +35,6 @@ def wav_to_base64(wav: np.ndarray, sr: int) -> str:
     sf.write(buf, wav, sr, format="WAV")
     return base64.b64encode(buf.getvalue()).decode()
 
-
 def handler(job):
     inp = job["input"]
 
